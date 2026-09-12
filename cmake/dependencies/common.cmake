@@ -197,11 +197,17 @@ FetchContent_MakeAvailable(prism)
 # success but hid_enumerate() returns nullptr, so RaphnetPhysicalDeviceManager
 # decides "no adapter found" and the SDL2 / Java HIDDeviceManager handles
 # everything that's actually present.
-if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+#
+# iOS takes the same stub for the same reason: hidapi would pick its macOS
+# backend, which includes <IOKit/hid/IOHIDManager.h> — a header the iOS SDK
+# does not ship, so the build fails outright. iOS has no user-accessible raw
+# HID layer at all; controllers arrive through GameController, which SDL2
+# already handles. A Raphnet USB adapter cannot be attached on iOS anyway.
+if (CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(_LUS_HIDAPI_STUB_DIR ${CMAKE_CURRENT_BINARY_DIR}/hidapi_stub)
     file(MAKE_DIRECTORY ${_LUS_HIDAPI_STUB_DIR})
     file(WRITE ${_LUS_HIDAPI_STUB_DIR}/hidapi.h [=[
-/* hidapi.h — Android stub shim. Minimal subset used by libultraship's
+/* hidapi.h — Android / iOS stub shim. Minimal subset used by libultraship's
  * Raphnet support paths. All operations report failure / no devices. */
 #ifndef HIDAPI_STUB_H
 #define HIDAPI_STUB_H
@@ -240,7 +246,7 @@ static inline int                       hid_read(hid_device *dev, unsigned char 
 static inline int                       hid_send_feature_report(hid_device *dev, const unsigned char *data, size_t length) { (void)dev; (void)data; (void)length; return -1; }
 static inline int                       hid_get_feature_report(hid_device *dev, unsigned char *data, size_t length) { (void)dev; (void)data; (void)length; return -1; }
 static inline int                       hid_set_nonblocking(hid_device *dev, int nonblock) { (void)dev; (void)nonblock; return 0; }
-static inline const wchar_t            *hid_error(hid_device *dev) { (void)dev; return L"hidapi-stub: Android build has no native HID backend"; }
+static inline const wchar_t            *hid_error(hid_device *dev) { (void)dev; return L"hidapi-stub: this platform has no native HID backend"; }
 
 #ifdef __cplusplus
 }
