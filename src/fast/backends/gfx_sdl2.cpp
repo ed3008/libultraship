@@ -371,7 +371,9 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
 #endif
 
-    SDL_Init(SDL_INIT_VIDEO);
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        SPDLOG_ERROR("SDL_Init(SDL_INIT_VIDEO) failed: {}", SDL_GetError());
+    }
 
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
@@ -430,6 +432,15 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
     }
 
     mWnd = SDL_CreateWindow(title, posX, posY, mWindowWidth, mWindowHeight, flags);
+    if (mWnd == nullptr) {
+        // Every later failure cascades from here — SDL_CreateRenderer reports
+        // only "Parameter 'window' is invalid", and Gui init then trips an
+        // ImGui "No current context" assertion — so report the real reason
+        // along with what was asked for.
+        SPDLOG_ERROR("SDL_CreateWindow failed: {} (pos {},{} size {}x{} flags 0x{:X})", SDL_GetError(), posX, posY,
+                     mWindowWidth, mWindowHeight, flags);
+        return;
+    }
 #ifdef _WIN32
     // Get Windows window handle and use it to subclass the window procedure.
     // Needed to circumvent SDLs DPI scaling problems under windows (original does only scale *sometimes*).

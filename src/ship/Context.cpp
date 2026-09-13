@@ -453,10 +453,18 @@ std::string Context::GetAppBundlePath() {
     }
 #endif
 
-#ifdef __IOS__
-    const char* home = getenv("HOME");
-    return std::string(home) + "/Documents";
-#endif
+    // NOTE: iOS deliberately does NOT return $HOME/Documents here. That is
+    // the writable data container and belongs to GetAppDirectoryPath();
+    // returning it from the *bundle* accessor made both of them answer the
+    // same directory, so LocateExistingFile probed one location twice and
+    // never looked inside the .app. Read-only resources shipped in the
+    // bundle (f3d.o2r, BattleShip.o2r, config.yml) then resolved to the
+    // "./<name>" miss value, and startup failed with
+    // "The archive at path /./f3d.o2r does not exist".
+    //
+    // iOS falls through to the NSBundle branch below, which is correct for
+    // it too: an iOS bundle is flat, so resourcePath is the .app directory
+    // itself.
 
 #ifdef __APPLE__
     // macOS .app bundles ALWAYS resolve via NSBundle's resourcePath,
