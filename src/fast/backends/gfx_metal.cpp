@@ -625,6 +625,14 @@ void GfxRenderingAPIMetal::EndFrame() {
     }
 
     auto screen_framebuffer = mFramebuffers[0];
+    static bool sLoggedPresent = false;
+    if (!sLoggedPresent) {
+        sLoggedPresent = true;
+        SPDLOG_INFO("EndFrame presenting: drawable {}, encoder {}, cmdbuf {}",
+                    mCurrentDrawable != nullptr ? "ok" : "NULL",
+                    screen_framebuffer.mCommandEncoder != nullptr ? "ok" : "NULL",
+                    screen_framebuffer.mCommandBuffer != nullptr ? "ok" : "NULL");
+    }
     screen_framebuffer.mCommandEncoder->endEncoding();
     screen_framebuffer.mCommandBuffer->presentDrawable(mCurrentDrawable);
     mCurrentVertexBufferPoolIndex = (mCurrentVertexBufferPoolIndex + 1) % kMaxVertexBufferPoolSize;
@@ -740,6 +748,11 @@ int GfxRenderingAPIMetal::CreateFramebuffer() {
 }
 
 void GfxRenderingAPIMetal::SetupScreenFramebuffer(uint32_t width, uint32_t height) {
+    static bool sLoggedSetupEntry = false;
+    if (!sLoggedSetupEntry) {
+        sLoggedSetupEntry = true;
+        SPDLOG_INFO("SetupScreenFramebuffer entered ({}x{})", width, height);
+    }
     mCurrentDrawable = nullptr;
     mCurrentDrawable = mLayer->nextDrawable();
     if (mCurrentDrawable == nullptr) {
