@@ -1,4 +1,12 @@
-set(PLATFORM "OS64COMBINED")
+# leetal/ios-cmake target selection. OS64COMBINED (device + simulator in one
+# fat build) is the default because it is convenient, but it is Xcode-only —
+# the toolchain hard-fails on any COMBINED platform under another generator.
+# Leave it overridable so a caller can pick a single-slice target (OS64,
+# SIMULATORARM64, ...) and build with Ninja, which also drops the x86_64
+# simulator slice nobody needs on an Apple Silicon host.
+if (NOT DEFINED PLATFORM)
+    set(PLATFORM "OS64COMBINED")
+endif()
 include(FetchContent)
 FetchContent_Declare(iostoolchain
     GIT_REPOSITORY https://github.com/leetal/ios-cmake
