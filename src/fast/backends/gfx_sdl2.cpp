@@ -1,3 +1,7 @@
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 #include <stdio.h>
 
 #if defined(ENABLE_OPENGL) || defined(__APPLE__)
@@ -234,8 +238,11 @@ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
         }
     }
 
-#if defined(__APPLE__)
-    // Implement fullscreening with native macOS APIs
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+    // Implement fullscreening with native macOS APIs. macOS only: these live
+    // in macUtils.mm, which is Cocoa and is not built for iOS — and an iOS
+    // app has no windowed mode to toggle out of in the first place, so iOS
+    // falls through to the SDL path below like every other platform.
     if (on != isNativeMacOSFullscreenActive(mWnd)) {
         toggleNativeMacOSFullscreen(mWnd);
     }
@@ -692,8 +699,10 @@ void GfxWindowBackendSDL2::HandleEvents() {
         HandleSingleEvent(event);
     }
 
-    // resync fullscreen state
-#ifdef __APPLE__
+    // resync fullscreen state (macOS only — the user can leave fullscreen
+    // through the green traffic-light button behind our back. No equivalent
+    // on iOS, where the app is always fullscreen.)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
     auto nextFullscreenState = isNativeMacOSFullscreenActive(mWnd);
     if (mFullScreen != nextFullscreenState) {
         mFullScreen = nextFullscreenState;

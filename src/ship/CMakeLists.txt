@@ -13,7 +13,10 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(FILTER Source_Files__Audio EXCLUDE REGEX "audio/WasapiAudioPlayer.*")
 endif()
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+# iOS has CoreAudio too (the frameworks are already linked for it in
+# ../CMakeLists.txt); it differs only in which output audio unit exists,
+# which CoreAudioAudioPlayer.cpp handles internally.
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
     list(FILTER Source_Files__Audio EXCLUDE REGEX "audio/CoreAudioAudioPlayer.*")
 endif()
 

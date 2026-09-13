@@ -2,6 +2,9 @@
 #include "ship/audio/CoreAudioAudioPlayer.h"
 #include <spdlog/spdlog.h>
 #include <cstring>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 
 namespace Ship {
 
@@ -44,7 +47,15 @@ bool CoreAudioAudioPlayer::DoInit() {
 
     AudioComponentDescription desc;
     desc.componentType = kAudioUnitType_Output;
+    // HAL is a desktop concept and kAudioUnitSubType_HALOutput does not exist
+    // on iOS; RemoteIO is the equivalent output unit there, and bus 0 is the
+    // one that reaches the speaker. Everything below this point — EnableIO,
+    // the stream format, the render callback — is identical for both.
+#if TARGET_OS_IPHONE
+    desc.componentSubType = kAudioUnitSubType_RemoteIO;
+#else
     desc.componentSubType = kAudioUnitSubType_HALOutput;
+#endif
     desc.componentManufacturer = kAudioUnitManufacturer_Apple;
     desc.componentFlags = 0;
     desc.componentFlagsMask = 0;
