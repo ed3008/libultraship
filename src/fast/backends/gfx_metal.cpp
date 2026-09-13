@@ -75,9 +75,20 @@ bool GfxRenderingAPIMetal::MetalInit(SDL_Renderer* renderer) {
     NS::AutoreleasePool* autorelease_pool = NS::AutoreleasePool::alloc()->init();
 
     mLayer = (CA::MetalLayer*)SDL_RenderGetMetalLayer(renderer);
+    if (mLayer == nullptr) {
+        SPDLOG_ERROR("SDL_RenderGetMetalLayer returned null — nothing can be presented");
+        return false;
+    }
     mLayer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
 
     mDevice = mLayer->device();
+    {
+        auto ds = mLayer->drawableSize();
+        int ow = 0, oh = 0;
+        SDL_GetRendererOutputSize(renderer, &ow, &oh);
+        SPDLOG_INFO("Metal init: layer drawableSize {}x{}, renderer output {}x{}, device {}", (double)ds.width,
+                    (double)ds.height, ow, oh, mDevice != nullptr ? "ok" : "NULL");
+    }
     mCommandQueue = mDevice->newCommandQueue();
 
     for (size_t i = 0; i < kMaxVertexBufferPoolSize; i++) {
@@ -731,6 +742,22 @@ int GfxRenderingAPIMetal::CreateFramebuffer() {
 void GfxRenderingAPIMetal::SetupScreenFramebuffer(uint32_t width, uint32_t height) {
     mCurrentDrawable = nullptr;
     mCurrentDrawable = mLayer->nextDrawable();
+    if (mCurrentDrawable == nullptr) {
+        // A layer with no size, or one that is not in a visible view
+        // hierarchy, hands back nothing. The frame then has no texture to
+        // draw into and nothing to present — the game keeps stepping and the
+        // screen stays black. Say so once instead of dereferencing null a
+        // few lines below.
+        static bool sLoggedNoDrawable = false;
+        if (!sLoggedNoDrawable) {
+            sLoggedNoDrawable = true;
+            auto ds = mLayer->drawableSize();
+            SPDLOG_ERROR("CAMetalLayer::nextDrawable returned null (drawableSize {}x{}) — frames render but "
+                         "nothing reaches the screen",
+                         (double)ds.width, (double)ds.height);
+        }
+        return;
+    }
 
     bool msaa_enabled = Ship::Context::GetInstance()->GetConsoleVariables()->GetInteger("gMSAAValue", 1) > 1;
 
@@ -798,6 +825,11 @@ void GfxRenderingAPIMetal::UpdateFramebufferParameters(int fb_id, uint32_t width
         int width, height;
         SDL_GetRendererOutputSize(mRenderer, &width, &height);
         mLayer->setDrawableSize({ CGFloat(width), CGFloat(height) });
+        static bool sLoggedScreenFbSize = false;
+        if (!sLoggedScreenFbSize) {
+            sLoggedScreenFbSize = true;
+            SPDLOG_INFO("Metal screen framebuffer pinned to renderer output {}x{}", width, height);
+        }
 
         return;
     }
